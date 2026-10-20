@@ -1,0 +1,10 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const {parseRecipe,geometry,draw}=require('./recipe.js');
+const r=p=>({screwingPos:p,screwingHeight:21.5,screwingDepth:0});
+const recipe=()=>({id:'test',Width:860,Height:1622,espagnoletteData:{topScrews:[r(70),r(70),r(840)],bottomScrews:[],leftScrews:[r(20),r(1602)],rightScrews:[r(70)]}});
+test('machine origins map horizontal positions from right and vertical positions from bottom',()=>{const g=geometry(parseRecipe(recipe()));const top=g.points.find(p=>p.edge==='Top'&&p.pos===70);assert.equal(top.x,g.x+g.w-70*g.scale);assert.equal(top.y,g.y);const left=g.points.find(p=>p.edge==='Left'&&p.pos===20);assert.equal(left.y,g.y+g.h-20*g.scale);assert.equal(left.x,g.x);assert.ok(Math.abs(g.w/g.h-860/1622)<1e-10);});
+test('coincident records preserve differing depth and source indices',()=>{const raw=recipe();raw.espagnoletteData.topScrews[1].screwingDepth=10;const m=parseRecipe(raw);assert.equal(m.total,6);assert.equal(m.groups.length,5);const p=m.groups.find(g=>g.edge==='Top'&&g.pos===70);assert.deepEqual(p.records.map(r=>r.screwingDepth),[0,10]);assert.deepEqual(p.records.map(r=>r.index),[1,2]);});
+test('malformed records and out of range positions are rejected',()=>{for(const change of [r=>r.Width=0,r=>r.Height='1622',r=>r.espagnoletteData.leftScrews=null,r=>r.espagnoletteData.topScrews[0].screwingPos=861,r=>r.espagnoletteData.topScrews[0].screwingHeight=null]){const raw=recipe();change(raw);assert.throws(()=>parseRecipe(raw));}});
+test('untrusted recipe IDs are escaped in SVG',()=>{const raw=recipe();raw.id='<script>alert("x")</script>';const svg=draw(parseRecipe(raw));assert.ok(!svg.includes('<script>'));assert.ok(svg.includes('&lt;script&gt;'));});
+test('empty edges work and unsupported mullion geometry is disclosed',()=>{const raw=recipe();for(const k in raw.espagnoletteData)raw.espagnoletteData[k]=[];raw.hasMullion=true;const m=parseRecipe(raw);assert.equal(m.total,0);assert.ok(m.warnings.some(s=>s.includes('Mullion')));assert.ok(draw(m).includes('<svg'));});
