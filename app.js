@@ -5,6 +5,55 @@ const example={id:'037701010570172',IsSash:true,Width:860,Height:1622,hasMullion
 let model,selected='';
 function message(s){$('message').textContent=s;}
 function values(g,key){return [...new Set(g.records.map(r=>r[key]))].join(' / ');}
+function renderGuide(){
+  const fields=[
+    ['id','Recipe identifier.'],
+    ['Width','Overall sash or frame width; sets the top and bottom edge length.'],
+    ['Height','Overall sash or frame height; sets the left and right edge length.'],
+    ['IsSash','true = sash; false = frame.'],
+    ['hasMullion','Whether a mullion is present. Its geometry is not defined by this schema.'],
+    ['Has3DHinge','Whether a 3D hinge is specified.'],
+    ['HasRegularHinge','Whether a regular hinge is specified.'],
+    ['espagnoletteType','Espagnolette model to be installed. This is a model code; code-to-model-name mappings are not supplied.']
+  ];
+  const display=v=>v===undefined?'Not specified':JSON.stringify(v);
+  const cellRow=(key,meaning,value)=>'<tr><td><code>'+esc(key)+'</code></td><td>'+esc(meaning)+'</td><td class="loaded-value">'+esc(value)+'</td></tr>';
+  $('field-guide').innerHTML=fields.map(([key,meaning])=>cellRow(key,meaning,display(model.raw[key]))).join('')+
+    Object.keys(model.raw).filter(key=>key!=='espagnoletteData'&&!fields.some(([k])=>k===key)).map(key=>cellRow(key,'Additional field; meaning not defined in this viewer.',display(model.raw[key]))).join('');
+  $('array-guide').innerHTML=Recipe.EDGES.map(([edge,key,color])=>'<tr><td><code style="color:'+color+'">'+key+'</code></td><td>'+edge+' · '+(edge==='Top'||edge==='Bottom'?'right end → left':'bottom end → top')+'</td><td>'+model.raw.espagnoletteData[key].length+'</td></tr>').join('');
+  const parameters=[
+    ['screwingPos','Screw position along the relevant edge, measured from its zero point. Top/bottom: from the right end. Left/right: from the bottom end.'],
+    ['screwingHeight','Vertical screwing height referenced from the machine table, as shown in the profile cross-section.'],
+    ['screwingDepth','Horizontal positioning parameter in the profile cross-section. This is not the screw penetration length.']
+  ];
+  $('parameter-guide').innerHTML=parameters.map(([key,meaning])=>{
+    const loaded=Recipe.EDGES.map(([edge,arrayKey])=>{
+      const unique=[...new Set(model.raw.espagnoletteData[arrayKey].map(r=>r[key]))];
+      return edge+': '+(unique.length?unique.slice(0,8).join(', ')+(unique.length>8?' … ('+unique.length+' distinct values)':'')+' mm':'No records');
+    }).join(' · ');
+    return '<div class="parameter"><h3><code>'+key+'</code></h3><p>'+meaning+'</p><p class="parameter-values">'+esc(loaded)+'</p></div>';
+  }).join('');
+  $('raw-json').textContent=JSON.stringify(model.raw,null,2);
+}
+function activateTab(name,focus=false){
+  for(const view of ['plan','guide']){
+    const active=view===name;
+    $(view+'-tab').setAttribute('aria-selected',String(active));
+    $(view+'-tab').tabIndex=active?0:-1;
+    $(view+'-panel').hidden=!active;
+  }
+  $('plan-actions').hidden=name!=='plan';
+  if(focus)$(name+'-tab').focus();
+}
+for(const view of ['plan','guide']){
+  $(view+'-tab').onclick=()=>activateTab(view);
+  $(view+'-tab').onkeydown=e=>{
+    if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){
+      e.preventDefault();
+      activateTab(e.key==='Home'?'plan':e.key==='End'?'guide':view==='plan'?'guide':'plan',true);
+    }
+  };
+}
 function render(){
   $('drawing').innerHTML=draw(model,$('labels').checked,selected);
   $('recipe-id').textContent=model.raw.id??'Unnamed recipe';
@@ -17,7 +66,7 @@ function render(){
   const g=model.groups.find(g=>g.id===selected);
   $('selection').innerHTML=g?`<h3 style="color:${g.color}">${g.edge} · ${g.pos} mm · ×${g.records.length}</h3><p>Reference: ${g.edge==='Top'||g.edge==='Bottom'?'right end':'bottom end'}. Values below are in mm.</p>`+g.records.map(r=>`<div class="record">Source record ${r.index} · Height <b>${r.screwingHeight}</b> · Depth <b>${r.screwingDepth}</b></div>`).join(''):'<p>Select a point on the drawing or a row below.</p>';
 }
-function load(raw,name){const next=parseRecipe(raw);model=next;selected='';$('filename').textContent=name;$('edge').value='all';message('');render();}
+function load(raw,name){const next=parseRecipe(raw);model=next;selected='';$('filename').textContent=name;$('edge').value='all';message('');render();renderGuide();}
 async function openFile(file){if(!file)return;try{if(file.size>5*1024*1024)throw Error('File exceeds the 5 MB limit.');load(JSON.parse((await file.text()).replace(/^\uFEFF/,'')),file.name);}catch(e){message('Could not open recipe: '+e.message);}}
 $('file').addEventListener('change',e=>{openFile(e.target.files[0]);e.target.value='';});
 $('sample').onclick=()=>load(example,'Example · 037701010570172 SCREW_EDITED.json');

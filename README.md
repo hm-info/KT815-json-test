@@ -1,10 +1,11 @@
-# KT815 JSON Test — Screw Recipe Viewer
+# KT815 Json Viewer
 
 Live app: [hm-info.github.io/KT815-json-test](https://hm-info.github.io/KT815-json-test/).
 
 Open `index.html` in Edge, Chrome or Firefox. No installation, build, server or internet connection is needed. The interface and drawing are in English. This standalone tool does not change the HMI application.
 
 - Load the built-in example or open/drop one JSON recipe.
+- Switch between **Screwing Plan** and **JSON Guide**. The guide explains the JSON fields alongside the loaded values, documents edge references and record parameters, and shows the complete formatted JSON read-only. `espagnoletteType` is the model code of the espagnolette to be installed; model names are not guessed.
 - Select a screw or register row to inspect every original record at that edge position. Filter the register by edge.
 - Export the diagram as SVG or 2× PNG. Use **Print / PDF** for the diagram, profile reference and full register (choose Save as PDF in the browser).
 - Exported SVG/PNG contains the plan, position labels and an edge parameter summary when space permits. Individual height/depth records and the schematic profile reference are in the interactive panel and printed report.
